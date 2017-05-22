@@ -298,7 +298,7 @@ class Communicator(object):
     data_callback=None
     # the function to be called when data is received 'data_callback(cuid,data)'
 
-    def __init__(self, guid, is_server=cfg.IS_SERVER, data_callback=None):
+    def __init__(self, is_server, guid="", data_callback=None):
         """
         :param guid: the guid of the device
         """

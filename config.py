@@ -55,9 +55,3 @@ def warn(text):
         raise Exception(text)
     else:
         print("[!!!] [" + str(time.time()) + ")]", text)
-
-
-################################################
-# Settings data                                #
-################################################
-IS_SERVER = True
