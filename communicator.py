@@ -1,9 +1,10 @@
 import threading, socket, binascii, time, netifaces
 import config as cfg
 
-if cfg.IS_SERVER:
+try:
     import pymysql
-
+except:
+    cfg.warn("Server needs PyMySQL !")
 
 class Packet(object):
     is_ready = None
@@ -536,7 +537,7 @@ if __name__ == "__main__":
         file = open("guid")
         guid = file.read().replace("\n", "")
         file.close()
-        a = Communicator(guid, cfg.IS_SERVER)
+        a = Communicator(True,guid)
         while True: continue
     except KeyboardInterrupt:
         cfg.log("User exiting...")
