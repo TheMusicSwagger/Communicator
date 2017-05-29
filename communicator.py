@@ -1,5 +1,5 @@
 import threading, socket, binascii, time, netifaces
-import configuration as cfg
+import configuration
 
 try:
     import pymysql
@@ -31,7 +31,7 @@ class Packet(object):
 
     def __str__(self):
         return "from_cuid=" + str(self.get_from_cuid()) + ", to_cuid=" + str(self.get_to_cuid()) + ", fct_id=" + str(
-            self.get_fonction_id()) + ", data=" + utls.bytes_to_hex_string(self.get_data())
+            self.get_fonction_id()) + ", data=" + self.get_data().decode()
 
     def create(self, from_cuid, to_cuid, fonction_id, data=b''):
         self.set_from_cuid(from_cuid)
@@ -41,7 +41,7 @@ class Packet(object):
         return self
 
     def reconstruct(self, raw_packet):
-        cfg.log("Reading : " + utls.bytes_to_hex_string(raw_packet))
+        configuration.log("Reading : " + raw_packet.decode())
         try:
             self.set_to_cuid(int.from_bytes(raw_packet[:1], "big"))
             self.set_from_cuid(int.from_bytes(raw_packet[1:2], "big"))
@@ -51,11 +51,11 @@ class Packet(object):
             found_crc = int.from_bytes(raw_packet[4 + datlen:], "big")
             correct_crc = self.calculate_crc(raw_packet[:4 + datlen])
             if correct_crc != found_crc:
-                cfg.warn("CRC Error : " + str(found_crc) + " != " + str(correct_crc) + " !")
+                configuration.warn("CRC Error : " + str(found_crc) + " != " + str(correct_crc) + " !")
             else:
-                cfg.log("CRC correct : " + str(found_crc))
+                configuration.log("CRC correct : " + str(found_crc))
         except:
-            cfg.warn("Parse error...")
+            configuration.warn("Parse error...")
         return self
 
     def build(self):
@@ -81,24 +81,24 @@ class Packet(object):
                 for iface in netifaces.interfaces():
                     try:
                         broad_ip = netifaces.ifaddresses(iface)[netifaces.AF_INET][0]["broadcast"]
-                        # cfg.log("Found a correct interface : " + str(iface))
+                        # configuration.log("Found a correct interface : " + str(iface))
                         break
                     except:
                         pass
-                        # cfg.log("Not a correct interface : " + str(iface))
+                        # configuration.log("Not a correct interface : " + str(iface))
                 if broad_ip is None:
                     raise Exception("No interface available !")
-                if self.to_cuid != cfg.CUID_SERVER or self.to_cuid == cfg.CUID_BROASCAST:
-                    sock.sendto(self.get_packed_data(), (broad_ip, cfg.COMMUNICATION_PORT_DEVICE))
-                if self.to_cuid == cfg.CUID_SERVER or self.to_cuid == cfg.CUID_BROASCAST:
-                    sock.sendto(self.get_packed_data(), (broad_ip, cfg.COMMUNICATION_PORT_SERVER))
+                if self.to_cuid != configuration.CUID_SERVER or self.to_cuid == configuration.CUID_BROASCAST:
+                    sock.sendto(self.get_packed_data(), (broad_ip, configuration.COMMUNICATION_PORT_DEVICE))
+                if self.to_cuid == configuration.CUID_SERVER or self.to_cuid == configuration.CUID_BROASCAST:
+                    sock.sendto(self.get_packed_data(), (broad_ip, configuration.COMMUNICATION_PORT_SERVER))
 
                 return True
             except Exception as e:
-                cfg.warn("Network error : " + "".join(e.args))
-            cfg.log("Sending : " + utls.bytes_to_hex_string(self.get_packed_data()))
+                configuration.warn("Network error : " + "".join(e.args))
+            configuration.log("Sending : " + self.get_packed_data().decode())
         else:
-            cfg.warn("Packet is not ready !")
+            configuration.warn("Packet is not ready !")
         return False
 
     def calculate_crc(self, data):
@@ -141,28 +141,28 @@ class Packet(object):
 
     def give_data_packet(self, from_cuid, data):
         try:
-            packed_data = b''.join([val.to_bytes(cfg.DATA_VALUE_SIZE // 8, "big") for val in data])
-            self.create(from_cuid, cfg.CUID_SERVER, cfg.FCT_GIVEDATA, packed_data)
+            packed_data = b''.join([val.to_bytes(configuration.DATA_VALUE_SIZE // 8, "big") for val in data])
+            self.create(from_cuid, configuration.CUID_SERVER, configuration.FCT_GIVEDATA, packed_data)
         except OverflowError:
             pass
         return self
 
     def give_info_packet(self, from_cuid, to_cuid, data):
-        self.create(from_cuid, to_cuid, cfg.FCT_INFO, data)
+        self.create(from_cuid, to_cuid, configuration.FCT_INFO, data)
         return self
 
     def give_goodbye_packet(self, from_cuid):
-        if from_cuid == cfg.CUID_SERVER:
-            self.create(from_cuid, cfg.CUID_BROASCAST, cfg.FCT_GOODBYE)
+        if from_cuid == configuration.CUID_SERVER:
+            self.create(from_cuid, configuration.CUID_BROASCAST, configuration.FCT_GOODBYE)
         else:
-            self.create(from_cuid, cfg.CUID_SERVER, cfg.FCT_GOODBYE)
+            self.create(from_cuid, configuration.CUID_SERVER, configuration.FCT_GOODBYE)
         return self
 
     def give_spec_packet(self, from_cuid, nchans, name, desc):
         bname, bdesc = name.encode(), desc.encode()
         packed_data = nchans.to_bytes(1, "big") + len(bname).to_bytes(1, "big") + len(bdesc).to_bytes(1,
                                                                                                       "big") + bname + bdesc
-        self.create(from_cuid, cfg.CUID_SERVER, cfg.FCT_MYSPEC, packed_data)
+        self.create(from_cuid, configuration.CUID_SERVER, configuration.FCT_MYSPEC, packed_data)
         return self
 
 
@@ -188,7 +188,7 @@ class Sender(threading.Thread):
 
         self.start()
         # starting the Thread
-        cfg.log("Sender started !")
+        configuration.log("Sender started !")
 
     def run(self):
         """
@@ -199,7 +199,7 @@ class Sender(threading.Thread):
                 if len(self.queue) > 0:
                     current_packet = self.queue.pop(0)
                     self.is_running = current_packet.send(self.sock)
-                    cfg.log("Sending : " + binascii.hexlify(current_packet.get_packed_data()).decode("ascii"))
+                    configuration.log("Sending : " + binascii.hexlify(current_packet.get_packed_data()).decode("ascii"))
                 else:
                     time.sleep(0.01)
         finally:
@@ -218,7 +218,7 @@ class Sender(threading.Thread):
         Kill the Thread.
         """
         self.is_running = False
-        cfg.log("Sender killed !")
+        configuration.log("Sender killed !")
         return self
 
 
@@ -245,7 +245,7 @@ class Receiver(threading.Thread):
 
         self.start()
         # starting the Thread
-        cfg.log("Receiver started !")
+        configuration.log("Receiver started !")
 
     def run(self):
         """
@@ -253,9 +253,9 @@ class Receiver(threading.Thread):
         """
         try:
             while self.is_running:
-                raw_data, address = self.sock.recvfrom(cfg.MAX_PACKET_SIZE)
+                raw_data, address = self.sock.recvfrom(configuration.MAX_PACKET_SIZE)
                 packet = Packet().reconstruct(raw_data)
-                cfg.log("Received : " + str(packet) + " : " + binascii.hexlify(raw_data).decode("ascii"))
+                configuration.log("Received : " + str(packet) + " : " + binascii.hexlify(raw_data).decode("ascii"))
                 self.callback(packet)
         finally:
             self.kill()
@@ -265,7 +265,7 @@ class Receiver(threading.Thread):
         Kill the Thread.
         """
         self.is_running = False
-        cfg.log("Receiver killed !")
+        configuration.log("Receiver killed !")
         return self
 
 
@@ -316,30 +316,30 @@ class Communicator(object):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            port = cfg.COMMUNICATION_PORT_DEVICE
+            port = configuration.COMMUNICATION_PORT_DEVICE
             if self.is_server:
-                port = cfg.COMMUNICATION_PORT_SERVER
+                port = configuration.COMMUNICATION_PORT_SERVER
             self.sock.bind(('', port))
             self.address = self.sock.getsockname()
-            cfg.log("Listening on" + str(self.address))
+            configuration.log("Listening on" + str(self.address))
         except:
-            cfg.warn("Socket setup error !")
+            configuration.warn("Socket setup error !")
 
         self.sender = Sender(self.sock)
         self.receiver = Receiver(lambda p: self.on_receive(p), self.sock)
 
         if self.is_server:
-            self.communication_uid = cfg.CUID_SERVER
+            self.communication_uid = configuration.CUID_SERVER
             # databases setup
             try:
-                self.database = pymysql.connect(host=cfg.DB_IP, user=cfg.DB_USER, password=cfg.DB_PASS, db=cfg.DB_NAME,
-                                                charset=cfg.DB_CHARSET)
+                self.database = pymysql.connect(host=configuration.DB_IP, user=configuration.DB_USER, password=configuration.DB_PASS, db=configuration.DB_NAME,
+                                                charset=configuration.DB_CHARSET)
             except pymysql.err.Error:
-                cfg.warn("Database setup error !")
+                configuration.warn("Database setup error !")
 
             # clean tables
-            self.db_query("DELETE FROM " + cfg.TB_CONNECTIONS)
-            self.db_query("DELETE FROM " + cfg.TB_SPECIFICATIONS)
+            self.db_query("DELETE FROM " + configuration.TB_CONNECTIONS)
+            self.db_query("DELETE FROM " + configuration.TB_SPECIFICATIONS)
 
             self.ready = True
         else:
@@ -355,7 +355,7 @@ class Communicator(object):
 
     def init_connection(self):
         packed_data = binascii.unhexlify(self.get_guid())
-        self.send(cfg.CUID_SERVER, 0x01, packed_data)
+        self.send(configuration.CUID_SERVER, 0x01, packed_data)
         # to server : IAMNEW
 
     def db_query(self, query, args=()):
@@ -367,23 +367,23 @@ class Communicator(object):
         return dat
 
     def on_receive(self, packet):
-        cfg.log(packet)
-        if packet.get_to_cuid() == self.get_cuid() or packet.get_to_cuid() == cfg.CUID_BROASCAST:
-            if packet.get_fonction_id() == cfg.FCT_INFO:
+        configuration.log(packet)
+        if packet.get_to_cuid() == self.get_cuid() or packet.get_to_cuid() == configuration.CUID_BROASCAST:
+            if packet.get_fonction_id() == configuration.FCT_INFO:
                 # self.exec_callback(4, [packet.get_from_cuid(), packet.get_data()])
                 print("Info : " + packet.get_data().decode("ascii"))
-            elif packet.get_fonction_id() == cfg.FCT_IAMNEW and self.is_server:
+            elif packet.get_fonction_id() == configuration.FCT_IAMNEW and self.is_server:
                 # I'M NEW
                 other_guid = binascii.hexlify(packet.get_data()).decode("ascii")
-                cfg.log("I'M NEW : " + str(other_guid))
+                configuration.log("I'M NEW : " + str(other_guid))
                 # finding new CUID
                 if self.database is not None:
-                    self.db_query("DELETE FROM " + cfg.TB_CONNECTIONS + " WHERE GUID=%s", (other_guid))
-                    dat = self.db_query("SELECT CUID FROM " + cfg.TB_CONNECTIONS)
-                    cfg.log("Already used CUIDs : " + str(dat))
+                    self.db_query("DELETE FROM " + configuration.TB_CONNECTIONS + " WHERE GUID=%s", (other_guid))
+                    dat = self.db_query("SELECT CUID FROM " + configuration.TB_CONNECTIONS)
+                    configuration.log("Already used CUIDs : " + str(dat))
                     is_ok = True
                     possible_cuid = 0
-                    for possible_cuid in cfg.CUID_LIST_USABLE:
+                    for possible_cuid in configuration.CUID_LIST_USABLE:
                         is_ok = True
                         for p in dat:
                             if possible_cuid in p:
@@ -391,56 +391,51 @@ class Communicator(object):
                         if is_ok:
                             break
                     if is_ok:
-                        cfg.log("Found : " + str(possible_cuid))
+                        configuration.log("Found : " + str(possible_cuid))
                         # if CUID found -> register and send it
                         found_cuid = possible_cuid
-                        self.db_query("INSERT INTO " + cfg.TB_CONNECTIONS + " (GUID, CUID) VALUES (%s, %s)",
+                        self.db_query("INSERT INTO " + configuration.TB_CONNECTIONS + " (GUID, CUID) VALUES (%s, %s)",
                                       (other_guid, found_cuid))
                         # registered
-                        self.send(cfg.CUID_BROASCAST, cfg.FCT_YOURETHIS,
+                        self.send(configuration.CUID_BROASCAST, configuration.FCT_YOURETHIS,
                                   binascii.unhexlify(other_guid) + found_cuid.to_bytes(1, "big"))
                         # sent
                     else:
-                        cfg.warn("No usable CUID found !")
+                        configuration.warn("No usable CUID found !")
                 else:
-                    self.send(cfg.CUID_BROASCAST, cfg.FCT_YOURETHIS,
+                    self.send(configuration.CUID_BROASCAST, configuration.FCT_YOURETHIS,
                               binascii.unhexlify(other_guid) + (2).to_bytes(1, "big"))
-            elif packet.get_fonction_id() == cfg.FCT_YOURETHIS and not self.is_server:
+            elif packet.get_fonction_id() == configuration.FCT_YOURETHIS and not self.is_server:
                 # YOU'RE THIS
-                cfg.log("YOU'RE THIS " + utls.bytes_to_hex_string(
-                    binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID])) + " - " + utls.bytes_to_hex_string(
-                    binascii.hexlify(packet.get_data()[cfg.SIZE_GUID:])))
-                cfg.log(utls.bytes_to_hex_string(
-                    binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID])) + " == " + self.get_guid() + " -> " + str(
-                    utls.bytes_to_hex_string(binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID])) == self.get_guid()))
-                if utls.bytes_to_hex_string(binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID])) == self.get_guid():
-                    my_new_cuid = int.from_bytes(packet.get_data()[cfg.SIZE_GUID:], "big")
-                    cfg.log("YOU'RE THIS : " + str(my_new_cuid))
+                configuration.log("YOU'RE THIS " + binascii.hexlify(packet.get_data()[:configuration.SIZE_GUID]).decode() + " - " + binascii.hexlify(packet.get_data()[configuration.SIZE_GUID:])).decode()
+                if binascii.hexlify(packet.get_data()[:configuration.SIZE_GUID]).decode() == self.get_guid():
+                    my_new_cuid = int.from_bytes(packet.get_data()[configuration.SIZE_GUID:], "big")
+                    configuration.log("YOU'RE THIS : " + str(my_new_cuid))
                     self.set_cuid(my_new_cuid)
                     # got new cuid
-                    self.send(packet.get_from_cuid(), cfg.FCT_INFO, b'Hello !')
+                    self.send(packet.get_from_cuid(), configuration.FCT_INFO, b'Hello !')
                 self.ready = True
-            elif packet.get_fonction_id() == cfg.FCT_GIVEDATA and self.is_server:
+            elif packet.get_fonction_id() == configuration.FCT_GIVEDATA and self.is_server:
                 # GIVE DATA
-                cfg.log("Give DATA :" + str(packet))
-                if self.db_query("SELECT inited FROM " + cfg.TB_CONNECTIONS + " WHERE cuid=" + str(
+                configuration.log("Give DATA :" + str(packet))
+                if self.db_query("SELECT inited FROM " + configuration.TB_CONNECTIONS + " WHERE cuid=" + str(
                         packet.get_from_cuid()))[0][0] == 0:
-                    cfg.log("Device not initialized !")
+                    configuration.log("Device not initialized !")
                     return
 
 
                 vals = []
-                for i in range(self.db_query("SELECT numchan FROM " + cfg.TB_SPECIFICATIONS + " WHERE cuid=" + str(
+                for i in range(self.db_query("SELECT numchan FROM " + configuration.TB_SPECIFICATIONS + " WHERE cuid=" + str(
                         packet.get_from_cuid()))[0][0]):
                     vals.append(int.from_bytes(
-                        packet.get_data()[(i * cfg.DATA_VALUE_SIZE // 8):((i + 1) * cfg.DATA_VALUE_SIZE // 8)],
+                        packet.get_data()[(i * configuration.DATA_VALUE_SIZE // 8):((i + 1) * configuration.DATA_VALUE_SIZE // 8)],
                         "big"))
                 print(str(packet.get_from_cuid())+ " -> "+str(vals))
                 if self.data_callback:
                     self.data_callback(packet.get_from_cuid(),vals)
-            elif packet.get_fonction_id() == cfg.FCT_MYSPEC and self.is_server:
+            elif packet.get_fonction_id() == configuration.FCT_MYSPEC and self.is_server:
                 # MY SPEC
-                cfg.log("Give MYSPEC :" + str(packet))
+                configuration.log("Give MYSPEC :" + str(packet))
                 # | NCHAN | NLEN | DLEN | NAME   | DESC   |
                 # | (8b)  | (8b) | (8b) | (NLENb)| (DLENb)|
                 nchan = packet.get_data()[0]
@@ -452,18 +447,18 @@ class Communicator(object):
                     name += chr(packet.get_data()[3 + i])
                 for i in range(dlen):
                     desc += chr(packet.get_data()[3 + nlen + i])
-                cfg.log(name + " - " + desc)
-                self.db_query("UPDATE " + cfg.TB_CONNECTIONS + " SET inited=%s WHERE CUID=%s",
+                configuration.log(name + " - " + desc)
+                self.db_query("UPDATE " + configuration.TB_CONNECTIONS + " SET inited=%s WHERE CUID=%s",
                               (1, packet.get_from_cuid()))
-                self.db_query("INSERT INTO " + cfg.TB_SPECIFICATIONS + " (numchan,name,description,cuid) VALUE (%s,%s,%s,%s)",
+                self.db_query("INSERT INTO " + configuration.TB_SPECIFICATIONS + " (numchan,name,description,cuid) VALUE (%s,%s,%s,%s)",
                               (nchan, name, desc,packet.get_from_cuid()))
-                cfg.log("DB Query finished !")
-            elif packet.get_fonction_id() == cfg.FCT_GOODBYE:
+                configuration.log("DB Query finished !")
+            elif packet.get_fonction_id() == configuration.FCT_GOODBYE:
                 # GOODBYE
-                cfg.log("Give GOODBYE :" + str(packet))
+                configuration.log("Give GOODBYE :" + str(packet))
                 if self.is_server:
-                    self.db_query("DELETE FROM " + cfg.TB_CONNECTIONS + " WHERE CUID=%s", (packet.get_from_cuid()))
-                    self.db_query("DELETE FROM " + cfg.TB_SPECIFICATIONS + " WHERE CUID=%s", (packet.get_from_cuid()))
+                    self.db_query("DELETE FROM " + configuration.TB_CONNECTIONS + " WHERE CUID=%s", (packet.get_from_cuid()))
+                    self.db_query("DELETE FROM " + configuration.TB_SPECIFICATIONS + " WHERE CUID=%s", (packet.get_from_cuid()))
                 else:
                     # self.callbacks['stop']()
                     pass
@@ -508,7 +503,7 @@ class Communicator(object):
         :return: 'self.communication_uid'
         """
         if self.communication_uid is None:
-            return cfg.CUID_BROASCAST
+            return configuration.CUID_BROASCAST
         return self.communication_uid
 
     def set_cuid(self, cuid):
@@ -521,7 +516,7 @@ class Communicator(object):
         self.sender.add_to_queue(Packet().give_spec_packet(self.get_cuid(), nchans, name, desc))
 
     def give_info(self, info):
-        self.sender.add_to_queue(Packet().give_info_packet(self.get_cuid(), cfg.CUID_BROASCAST, info))
+        self.sender.add_to_queue(Packet().give_info_packet(self.get_cuid(), configuration.CUID_BROASCAST, info))
 
     def give_goodbye(self):
         self.sender.add_to_queue(Packet().give_goodbye_packet(self.get_cuid()))
@@ -540,6 +535,6 @@ if __name__ == "__main__":
         a = Communicator(True,guid)
         while True: continue
     except KeyboardInterrupt:
-        cfg.log("User exiting...")
+        configuration.log("User exiting...")
     finally:
         a.stop()
