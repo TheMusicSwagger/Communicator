@@ -1,5 +1,5 @@
 import threading, socket, binascii, time, netifaces
-import config as cfg
+import configuration as cfg
 
 try:
     import pymysql
