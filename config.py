@@ -12,10 +12,10 @@ DEBUG_MODE = False
 RAISE_ERROR = False
 # mode debug
 DB_IP = "localhost"
-DB_USER = "root"
-DB_PASS = "thomas"
-DB_NAME = "musicswagger"
-DB_CHARSET = "utf8mb4"
+DB_USER = "notroot"
+DB_PASS = ""
+DB_NAME = "themusicswagger_db"
+DB_CHARSET = "utf8"
 # database infos to connect
 TB_CONNECTIONS = "connections"
 TB_SPECIFICATIONS = "specifications"
