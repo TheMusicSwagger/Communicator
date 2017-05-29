@@ -4,7 +4,7 @@ import config as cfg
 try:
     import pymysql
 except:
-    cfg.warn("Server needs PyMySQL !")
+    pass
 
 class Packet(object):
     is_ready = None
