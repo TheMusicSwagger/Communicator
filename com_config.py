@@ -9,7 +9,7 @@ class Config:
     COMMUNICATION_PORT_SERVER = 55665
     COMMUNICATION_PORT_DEVICE = 55666
     # port du server
-    DEBUG_MODE = False
+    DEBUG_MODE = True
     RAISE_ERROR = False
     # mode debug
     DB_IP = "localhost"
