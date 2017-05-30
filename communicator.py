@@ -1,5 +1,8 @@
 import threading, socket, binascii, time, netifaces
-from com_config import Config as cfg
+try:
+    from com_config import Config as cfg
+except:
+    from .com_config import Config as cfg
 
 try:
     import pymysql
