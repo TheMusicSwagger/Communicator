@@ -93,9 +93,10 @@ class Packet(object):
                     raise Exception("No interface available !")
                 if self.to_cuid != cfg.CUID_SERVER or self.to_cuid == cfg.CUID_BROASCAST:
                     sock.sendto(self.get_packed_data(), (broad_ip, cfg.COMMUNICATION_PORT_DEVICE))
+                    cfg.log("To Device")
                 if self.to_cuid == cfg.CUID_SERVER or self.to_cuid == cfg.CUID_BROASCAST:
                     sock.sendto(self.get_packed_data(), (broad_ip, cfg.COMMUNICATION_PORT_SERVER))
-
+                    cfg.log("To Server")
                 return True
             except Exception as e:
                 cfg.warn("Network error : " + "".join(e.args))
@@ -410,7 +411,7 @@ class Communicator(object):
                               binascii.unhexlify(other_guid) + (2).to_bytes(1, "big"))
             elif packet.get_fonction_id() == cfg.FCT_YOURETHIS and not self.is_server:
                 # YOU'RE THIS
-                cfg.log("YOU'RE THIS " + binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID]).decode() + " - " + binascii.hexlify(packet.get_data()[cfg.SIZE_GUID:])).decode()
+                cfg.log("YOU'RE THIS " + binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID]).decode() + " - " + binascii.hexlify(packet.get_data()[cfg.SIZE_GUID:]).decode())
                 if binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID]).decode() == self.get_guid():
                     my_new_cuid = int.from_bytes(packet.get_data()[cfg.SIZE_GUID:], "big")
                     cfg.log("YOU'RE THIS : " + str(my_new_cuid))
