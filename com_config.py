@@ -37,7 +37,7 @@ class Config:
     FCT_GIVEDATA = 0x10
     FCT_MYSPEC = 0x03
     FCT_GOODBYE = 0x20
-    DATA_VALUE_SIZE = 4 * 0x08
+    DATA_VALUE_SIZE = 2 * 0x08
     # size of each channel value (multiple of 0x08)
     MAX_PACKET_SIZE = 512
 
