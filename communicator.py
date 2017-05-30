@@ -34,7 +34,7 @@ class Packet(object):
 
     def __str__(self):
         return "from_cuid=" + str(self.get_from_cuid()) + ", to_cuid=" + str(self.get_to_cuid()) + ", fct_id=" + str(
-            self.get_fonction_id()) + ", data=" + self.get_data().decode()
+            self.get_fonction_id()) + ", data=" + binascii.hexlify(self.get_data()).decode()
 
     def create(self, from_cuid, to_cuid, fonction_id, data=b''):
         self.set_from_cuid(from_cuid)
@@ -44,7 +44,7 @@ class Packet(object):
         return self
 
     def reconstruct(self, raw_packet):
-        cfg.log("Reading : " + raw_packet.decode())
+        cfg.log("Reading : " + binascii.hexlify(raw_packet).decode())
         try:
             self.set_to_cuid(int.from_bytes(raw_packet[:1], "big"))
             self.set_from_cuid(int.from_bytes(raw_packet[1:2], "big"))
@@ -99,7 +99,7 @@ class Packet(object):
                 return True
             except Exception as e:
                 cfg.warn("Network error : " + "".join(e.args))
-            cfg.log("Sending : " + self.get_packed_data().decode())
+            cfg.log("Sending : " + binascii.hexlify(self.get_packed_data()).decode())
         else:
             cfg.warn("Packet is not ready !")
         return False
