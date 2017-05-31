@@ -1,5 +1,6 @@
 import time
 
+
 class Config:
     ################################################
     # Some configs                                 #
@@ -49,7 +50,6 @@ class Config:
     def log(text):
         if Config.DEBUG_MODE:
             print("[---] [" + str(time.time()) + ")]", text)
-
 
     def warn(text):
         if Config.RAISE_ERROR:

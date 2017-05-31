@@ -1,4 +1,5 @@
 import threading, socket, binascii, time, netifaces
+
 try:
     from com_config import Config as cfg
 except:
@@ -8,6 +9,7 @@ try:
     import pymysql
 except:
     pass
+
 
 class Packet(object):
     is_ready = None
@@ -300,7 +302,8 @@ class Communicator(object):
 
     ready = None
 
-    data_callback=None
+    data_callback = None
+
     # the function to be called when data is received 'data_callback(cuid,data)'
 
     def __init__(self, is_server, guid="", data_callback=None):
@@ -310,7 +313,7 @@ class Communicator(object):
         super(Communicator, self).__init__()
 
         # setting up
-        self.data_callback=data_callback
+        self.data_callback = data_callback
 
         self.is_server = is_server
         self.global_uid = guid
@@ -411,7 +414,9 @@ class Communicator(object):
                               binascii.unhexlify(other_guid) + (2).to_bytes(1, "big"))
             elif packet.get_fonction_id() == cfg.FCT_YOURETHIS and not self.is_server:
                 # YOU'RE THIS
-                cfg.log("YOU'RE THIS " + binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID]).decode() + " - " + binascii.hexlify(packet.get_data()[cfg.SIZE_GUID:]).decode())
+                cfg.log("YOU'RE THIS " + binascii.hexlify(
+                    packet.get_data()[:cfg.SIZE_GUID]).decode() + " - " + binascii.hexlify(
+                    packet.get_data()[cfg.SIZE_GUID:]).decode())
                 if binascii.hexlify(packet.get_data()[:cfg.SIZE_GUID]).decode() == self.get_guid():
                     my_new_cuid = int.from_bytes(packet.get_data()[cfg.SIZE_GUID:], "big")
                     cfg.log("YOU'RE THIS : " + str(my_new_cuid))
@@ -427,16 +432,15 @@ class Communicator(object):
                     cfg.log("Device not initialized !")
                     return
 
-
                 vals = []
                 for i in range(self.db_query("SELECT numchan FROM " + cfg.TB_SPECIFICATIONS + " WHERE cuid=" + str(
                         packet.get_from_cuid()))[0][0]):
                     vals.append(int.from_bytes(
                         packet.get_data()[(i * cfg.DATA_VALUE_SIZE // 8):((i + 1) * cfg.DATA_VALUE_SIZE // 8)],
                         "big"))
-                print(str(packet.get_from_cuid())+ " -> "+str(vals))
+                print(str(packet.get_from_cuid()) + " -> " + str(vals))
                 if self.data_callback:
-                    self.data_callback(packet.get_from_cuid(),vals)
+                    self.data_callback(packet.get_from_cuid(), vals)
             elif packet.get_fonction_id() == cfg.FCT_MYSPEC and self.is_server:
                 # MY SPEC
                 cfg.log("Give MYSPEC :" + str(packet))
@@ -454,8 +458,9 @@ class Communicator(object):
                 cfg.log(name + " - " + desc)
                 self.db_query("UPDATE " + cfg.TB_CONNECTIONS + " SET inited=%s WHERE CUID=%s",
                               (1, packet.get_from_cuid()))
-                self.db_query("INSERT INTO " + cfg.TB_SPECIFICATIONS + " (numchan,name,description,cuid) VALUE (%s,%s,%s,%s)",
-                              (nchan, name, desc,packet.get_from_cuid()))
+                self.db_query(
+                    "INSERT INTO " + cfg.TB_SPECIFICATIONS + " (numchan,name,description,cuid) VALUE (%s,%s,%s,%s)",
+                    (nchan, name, desc, packet.get_from_cuid()))
                 cfg.log("DB Query finished !")
             elif packet.get_fonction_id() == cfg.FCT_GOODBYE:
                 # GOODBYE
@@ -536,7 +541,7 @@ if __name__ == "__main__":
         file = open("guid")
         guid = file.read().replace("\n", "")
         file.close()
-        a = Communicator(True,guid)
+        a = Communicator(True, guid)
         while True: continue
     except KeyboardInterrupt:
         cfg.log("User exiting...")
